@@ -120,11 +120,13 @@ const YUSTIA_TOKENS = {
 /** 背景 CSS：
  *  1. AppFrame 上把 bg-base 重定义为 transparent，对话区/详情栏透出图片；
  *  2. sidebar-fill 按 alpha 半透明（昼夜微调），侧栏透出图片；
- *  3. body 底层图片 + 50% 底色帷幕保证文字可读。 */
+ *  3. 侧栏 backdrop-filter 毛玻璃，模糊度随透明度联动（越透越模糊）；
+ *  4. body 底层图片 + 50% 底色帷幕保证文字可读。 */
 function bgCssFor(src, alpha) {
   const a = Math.min(1, Math.max(0.3, alpha))
   const lightPct = Math.round(a * 100)
   const darkPct = Math.round(Math.max(0.2, a - 0.08) * 100)
+  const blurPx = Math.max(0, Math.min(24, Math.round((1 - a) * 30)))
   return `
 body [class*='_frame'] {
   background-color: transparent !important;
@@ -133,6 +135,10 @@ body [class*='_frame'] {
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
+}
+body [class*='_frame'] [class*='sidebarCol'] {
+  -webkit-backdrop-filter: blur(${blurPx}px);
+  backdrop-filter: blur(${blurPx}px);
 }
 body {
   background-image:
