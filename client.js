@@ -1,49 +1,45 @@
 /**
- * 棕色尘埃2 · 悠丝缇亚 (Justia) — DSH 动态皮肤插件（Client 端参考实现，对应 pkg-4）
+ * 棕色尘埃2 · 悠丝缇亚 (Justia) — DSH 动态皮肤插件（Client 端参考实现，对应 pkg-18）
  *
- * 原理（移植自 hsr-kafka 皮肤结构，适配本会话 DSH 运行时契约）：
- * 1. 设计令牌重映射：theme.overrideTokens(source, tokens) 叠加 { light, dark } 令牌对。
- * 2. 签名装饰：styles.insert(css)，颜色一律 var(--dsw-alias-*) 引用，昼夜自动跟随。
- * 3. 自定义背景图：
- *    - 默认圣光背景：Host 读 workspace 内 assets/default-bg.jpg → base64 data URI（挂载时自动应用）
- *    - 本地路径：host.call('bg-read-file', {path}) → Host fs.readBytes → 手写 base64 → data URI
- *    - https URL：浏览器直连 CSS url()（背景图不受 CORS 限制）
- *    - 背景 CSS 自带 50% 底色帷幕（bg-base 令牌，昼夜自适应）保证文字可读
- *    - 面板（tool.view.cordis）提供输入框 + 应用/默认/移除 按钮与状态行
- * 4. 所有副作用可回收：令牌层 ctx.effect、样式表 styles.insert、背景层统一由 swapBg 管理。
+ * 能力一览：
+ * 1. 设计令牌昼夜重映射（theme.overrideTokens）
+ * 2. 签名装饰（金色滚动条/选中/链接/代码块/分割线；圣光+星尘浓度可调）
+ * 3. 自定义背景图：背景库下拉 / 文件名 / 绝对路径 / https URL / 随机 / 默认 / 移除
+ * 4. 玻璃化：对话区与详情栏透图（bg-base→transparent）、侧栏半透明+毛玻璃、
+ *    消息/工具卡玻璃（layer-1/2 令牌）、标题栏与输入区毛玻璃
+ * 5. 三滑杆：侧栏透明度（30–100）、帷幕深浅（0–80）、装饰浓度（0–100）
+ * 6. 设置自动记忆：settings.json（Host 读写），重新运行插件自动恢复
+ * 全部副作用可回收；Host 半体见 host.js。
  */
 
-const SKIN_CSS = `
-/* bd2-yustia signature decor — 棕色尘埃2 · 悠丝缇亚 */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background-image:
-    radial-gradient(ellipse at 85% -10%, color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent) 0%, transparent 55%),
-    radial-gradient(ellipse at -10% 105%, color-mix(in srgb, var(--dsw-alias-brand-primary) 11%, transparent) 0%, transparent 45%);
-  opacity: 0.38;
+const STATIC_CSS = `
+/* 静态深色令牌重映射（frame 内）：消除顶部状态栏/创造模式区域的纯黑表面 */
+body [class*='_frame'] {
+  --dsw-static-neutral-1000: #2a2118;
+  --dsw-static-neutral-900: #33291b;
+  --dsw-static-neutral-850: #3a3024;
+  --dsw-static-neutral-800: #423a2e;
+  --dsw-static-neutral-bluish-1000: #2a2118;
+  --dsw-static-neutral-bluish-900: #33291b;
+  --dsw-static-neutral-bluish-850: #3a3024;
+  --dsw-static-neutral-bluish-800: #423a2e;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 78%, transparent);
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #b0871f 12%, transparent);
+  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #b0871f 16%, transparent);
 }
-body[data-ds-dark-theme]::before { opacity: 0.55; }
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background-image:
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--dsw-alias-brand-primary) 60%, transparent) 0 1.5px, transparent 3.2px),
-    radial-gradient(circle at 80% 12%, color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, transparent) 0 1.2px, transparent 2.8px),
-    radial-gradient(circle at 90% 66%, color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, transparent) 0 1.4px, transparent 3px),
-    radial-gradient(circle at 28% 84%, color-mix(in srgb, var(--dsw-alias-brand-primary) 40%, transparent) 0 1.2px, transparent 2.8px),
-    radial-gradient(circle at 58% 32%, color-mix(in srgb, var(--dsw-alias-brand-primary) 35%, transparent) 0 1px, transparent 2.6px);
-  background-size: 520px 520px, 640px 640px, 460px 460px, 700px 700px, 560px 560px;
-  opacity: 0.22;
-  animation: bd2-yustia-twinkle 9s ease-in-out infinite;
+body[data-ds-dark-theme] [class*='_frame'] {
+  --dsw-static-neutral-1000: #16130f;
+  --dsw-static-neutral-900: #1c1712;
+  --dsw-static-neutral-850: #211a14;
+  --dsw-static-neutral-800: #261e16;
+  --dsw-static-neutral-bluish-1000: #16130f;
+  --dsw-static-neutral-bluish-900: #1c1712;
+  --dsw-static-neutral-bluish-850: #211a14;
+  --dsw-static-neutral-bluish-800: #261e16;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 80%, transparent);
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #d8b25c 14%, transparent);
+  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #d8b25c 18%, transparent);
 }
-body[data-ds-dark-theme]::after { opacity: 0.34; }
 ::selection {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent);
   color: var(--dsw-alias-label-primary);
@@ -93,11 +89,51 @@ hr {
   background-repeat: no-repeat;
   opacity: 0.6;
 }
+`
+
+/** 圣光/星尘装饰层：浓度可调（0–1） */
+function decorCss(intensity) {
+  const i = Math.min(1, Math.max(0, Number(intensity) || 0))
+  const b1 = (0.38 * i).toFixed(3)
+  const b1d = (0.55 * i).toFixed(3)
+  const b2 = (0.22 * i).toFixed(3)
+  const b2d = (0.34 * i).toFixed(3)
+  return `
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image:
+    radial-gradient(ellipse at 85% -10%, color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent) 0%, transparent 55%),
+    radial-gradient(ellipse at -10% 105%, color-mix(in srgb, var(--dsw-alias-brand-primary) 11%, transparent) 0%, transparent 45%);
+  opacity: ${b1};
+}
+body[data-ds-dark-theme]::before { opacity: ${b1d}; }
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--dsw-alias-brand-primary) 60%, transparent) 0 1.5px, transparent 3.2px),
+    radial-gradient(circle at 80% 12%, color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, transparent) 0 1.2px, transparent 2.8px),
+    radial-gradient(circle at 90% 66%, color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, transparent) 0 1.4px, transparent 3px),
+    radial-gradient(circle at 28% 84%, color-mix(in srgb, var(--dsw-alias-brand-primary) 40%, transparent) 0 1.2px, transparent 2.8px),
+    radial-gradient(circle at 58% 32%, color-mix(in srgb, var(--dsw-alias-brand-primary) 35%, transparent) 0 1px, transparent 2.6px);
+  background-size: 520px 520px, 640px 640px, 460px 460px, 700px 700px, 560px 560px;
+  opacity: ${b2};
+  animation: bd2-yustia-twinkle 9s ease-in-out infinite;
+}
+body[data-ds-dark-theme]::after { opacity: ${b2d}; }
 @keyframes bd2-yustia-twinkle {
   0%, 100% { transform: translate(0, 0); }
   50% { transform: translate(3px, -4px); }
 }
 `
+}
 
 /** 悠丝缇亚白金圣骑士令牌：{ light, dark } 成对 */
 const YUSTIA_TOKENS = {
@@ -116,14 +152,10 @@ const YUSTIA_TOKENS = {
   '--dsw-specific-sidebar-fill': { light: '#efe5d2', dark: '#1c1712' },
 }
 
-/** 背景 CSS：底层图片 + 上层 50% 底色帷幕（昼夜自适应） */
-/** 背景 CSS：
- *  1. AppFrame 上把 bg-base 重定义为 transparent，对话区/详情栏透出图片；
- *  2. sidebar-fill 按 alpha 半透明（昼夜微调），侧栏透出图片；
- *  3. 侧栏 backdrop-filter 毛玻璃，模糊度随透明度联动（越透越模糊）；
- *  4. body 底层图片 + 50% 底色帷幕保证文字可读。 */
-function bgCssFor(src, alpha) {
-  const a = Math.min(1, Math.max(0.3, alpha))
+/** 背景 CSS：透图 + 玻璃化 + 可调帷幕（细节见 README 第五节） */
+function bgCssFor(src, opts) {
+  const a = Math.min(1, Math.max(0.3, opts.sidebarAlpha))
+  const veil = Math.min(80, Math.max(0, opts.veilPct))
   const lightPct = Math.round(a * 100)
   const darkPct = Math.round(Math.max(0.2, a - 0.08) * 100)
   const blurPx = Math.max(0, Math.min(24, Math.round((1 - a) * 30)))
@@ -132,17 +164,35 @@ body [class*='_frame'] {
   background-color: transparent !important;
   --dsw-alias-bg-base: transparent !important;
   --dsw-specific-sidebar-fill: color-mix(in srgb, #efe5d2 ${lightPct}%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, #fbf7ef 82%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, #efe6d6 72%, transparent) !important;
+  --dsw-specific-tip: color-mix(in srgb, #fbf7ef 70%, transparent) !important;
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, #1f1a13 82%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, #282113 70%, transparent) !important;
+  --dsw-specific-tip: color-mix(in srgb, #1f1a13 68%, transparent) !important;
 }
 body [class*='_frame'] [class*='sidebarCol'] {
   -webkit-backdrop-filter: blur(${blurPx}px);
   backdrop-filter: blur(${blurPx}px);
 }
+body [class*='_frame'] [class*='_dock'] {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+body [class*='_frame'] [class*='_header'] {
+  background: color-mix(in srgb, #fbf7ef 45%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+body[data-ds-dark-theme] [class*='_frame'] [class*='_header'] {
+  background: color-mix(in srgb, #1f1a13 45%, transparent);
+}
 body {
   background-image:
-    linear-gradient(color-mix(in srgb, var(--dsw-alias-bg-base) 50%, transparent), color-mix(in srgb, var(--dsw-alias-bg-base) 50%, transparent)),
+    linear-gradient(color-mix(in srgb, var(--dsw-alias-bg-base) ${veil}%, transparent), color-mix(in srgb, var(--dsw-alias-bg-base) ${veil}%, transparent)),
     url("${src}");
   background-size: 100% 100%, cover;
   background-position: center, center;
@@ -166,6 +216,8 @@ function YustiaRunPanel(props) {
   const [status, setStatus] = React.useState('加载默认背景…')
   const [bgList, setBgList] = React.useState([])
   const [sidebarPct, setSidebarPct] = React.useState(70)
+  const [veilPct, setVeilPct] = React.useState(50)
+  const [decorPct, setDecorPct] = React.useState(100)
   const ctrl = props.ctrl
   const run = (op) => async () => {
     setStatus('处理中…')
@@ -176,11 +228,13 @@ function YustiaRunPanel(props) {
     ctrl.listBackgrounds().then((names) => {
       if (alive) setBgList(names)
     }).catch(() => {})
-    ctrl.applyDefault().then((msg) => {
-      if (alive) setStatus(msg)
-    }).catch((e) => {
-      if (alive) setStatus('默认背景加载失败：' + String(e && e.message ? e.message : e))
-    })
+    ctrl.ready.then((st) => {
+      if (!alive) return
+      setSidebarPct(st.sidebarPct)
+      setVeilPct(st.veilPct)
+      setDecorPct(st.decorPct)
+      setStatus(st.statusMsg)
+    }).catch(() => {})
     return () => { alive = false }
   }, [])
   const cardStyle = {
@@ -224,10 +278,21 @@ function YustiaRunPanel(props) {
     background: 'transparent', color: 'var(--dsw-alias-brand-primary)',
     border: '1px solid var(--dsw-alias-border-l2)',
   }
+  const sliderStyle = { flex: 1, minWidth: 140, accentColor: 'var(--dsw-alias-brand-primary)' }
   const onSidebarAlpha = (e) => {
     const pct = Number(e.target.value)
     setSidebarPct(pct)
     ctrl.setSidebarAlpha(pct / 100).then((msg) => setStatus(msg)).catch(() => {})
+  }
+  const onVeil = (e) => {
+    const pct = Number(e.target.value)
+    setVeilPct(pct)
+    ctrl.setVeil(pct).then((msg) => setStatus(msg)).catch(() => {})
+  }
+  const onDecor = (e) => {
+    const pct = Number(e.target.value)
+    setDecorPct(pct)
+    ctrl.setDecor(pct).then((msg) => setStatus(msg)).catch(() => {})
   }
   return React.createElement('div', { style: cardStyle },
     React.createElement('p', { style: titleStyle }, '棕色尘埃2 · 悠丝缇亚 — 白金圣骑士皮肤已生效'),
@@ -266,22 +331,34 @@ function YustiaRunPanel(props) {
         onChange: (e) => setValue(e.target.value),
       }),
       React.createElement('button', { style: btnStyle, onClick: run(() => ctrl.applyValue(value)) }, '应用背景'),
+      React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.randomBg()) }, '随机'),
       React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.applyDefault()) }, '默认'),
       React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.clear()) }, '移除'),
     ),
     React.createElement('div', { style: rowStyle },
       React.createElement('span', { style: labelStyle }, '侧栏透明度'),
-      React.createElement('input', {
-        type: 'range', min: 30, max: 100, step: 5,
-        value: sidebarPct,
-        onChange: onSidebarAlpha,
-        style: { flex: 1, minWidth: 140, accentColor: 'var(--dsw-alias-brand-primary)' },
-      }),
+      React.createElement('input', { type: 'range', min: 30, max: 100, step: 5, value: sidebarPct, onChange: onSidebarAlpha, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
       React.createElement('span', { style: labelStyle }, sidebarPct + '%'),
     ),
-    React.createElement('p', { style: subStyle }, '背景库：bd2-yustia-skin/backgrounds/，命名 bg-<名称>.<png|jpg|webp|gif|avif|bmp|svg>'),
+    React.createElement('div', { style: rowStyle },
+      React.createElement('span', { style: labelStyle }, '帷幕深浅'),
+      React.createElement('input', { type: 'range', min: 0, max: 80, step: 5, value: veilPct, onChange: onVeil, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
+      React.createElement('span', { style: labelStyle }, veilPct + '%'),
+    ),
+    React.createElement('div', { style: rowStyle },
+      React.createElement('span', { style: labelStyle }, '装饰浓度'),
+      React.createElement('input', { type: 'range', min: 0, max: 100, step: 5, value: decorPct, onChange: onDecor, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
+      React.createElement('span', { style: labelStyle }, decorPct + '%'),
+    ),
+    React.createElement('p', { style: subStyle }, '背景库：bd2-yustia-skin/backgrounds/，命名 bg-<名称>.<扩展名>；命名为 bg-default.* 即为默认背景；设置自动记忆'),
     React.createElement('p', { style: subStyle }, status),
   )
+}
+
+function clamp(v, lo, hi, fallback) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(hi, Math.max(lo, n))
 }
 
 export function apply(ctx) {
@@ -293,19 +370,35 @@ export function apply(ctx) {
     )
   }
 
-  styles.insert(SKIN_CSS)
+  styles.insert(STATIC_CSS)
 
   let currentBgDispose
+  let decorDispose
   let stopped = false
   let currentSrc = ''
+  let currentLabel = ''
+  let currentKind = ''
   let sidebarAlpha = 0.7
+  let veilPct = 50
+  let decorIntensity = 1
+
+  let resolveReady
+  const ready = new Promise((res) => { resolveReady = res })
+
+  function reapplyDecor() {
+    if (typeof decorDispose === 'function') {
+      decorDispose()
+      decorDispose = undefined
+    }
+    decorDispose = styles.insert(decorCss(decorIntensity))
+  }
 
   function reapplyBg() {
     if (typeof currentBgDispose === 'function') {
       currentBgDispose()
       currentBgDispose = undefined
     }
-    if (currentSrc) currentBgDispose = styles.insert(bgCssFor(currentSrc, sidebarAlpha))
+    if (currentSrc) currentBgDispose = styles.insert(bgCssFor(currentSrc, { sidebarAlpha, veilPct }))
   }
 
   function swapBg(src) {
@@ -314,7 +407,20 @@ export function apply(ctx) {
     reapplyBg()
   }
 
+  function persist() {
+    try {
+      host.call('bg-save-settings', { settings: {
+        source: currentLabel,
+        kind: currentKind,
+        sidebarAlpha,
+        veilPct,
+        decorIntensity,
+      } }).catch(() => {})
+    } catch (e) {}
+  }
+
   const bgController = {
+    ready,
     async listBackgrounds() {
       try {
         const r = await host.call('bg-list', {})
@@ -323,25 +429,40 @@ export function apply(ctx) {
         return []
       }
     },
+    persist,
     async setSidebarAlpha(v) {
-      const n = Number(v)
-      if (!Number.isFinite(n)) return '透明度参数无效'
-      sidebarAlpha = Math.min(1, Math.max(0.3, n))
+      sidebarAlpha = clamp(v, 0.3, 1, 0.7)
       reapplyBg()
-      return '侧栏透明度 ' + Math.round(sidebarAlpha * 100) + '%'
+      return '侧栏透明度 ' + Math.round(sidebarAlpha * 100) + '%（毛玻璃联动）'
+    },
+    async setVeil(v) {
+      veilPct = clamp(v, 0, 80, 50)
+      reapplyBg()
+      return '帷幕深浅 ' + veilPct + '%'
+    },
+    async setDecor(v) {
+      decorIntensity = clamp(v / 100, 0, 1, 1)
+      reapplyDecor()
+      return '装饰浓度 ' + Math.round(decorIntensity * 100) + '%'
     },
     async applyValue(raw) {
       const value = String(raw || '').trim()
-      if (!value) return '请输入本地图片路径或 http(s):// URL'
+      if (!value) return '请选择或输入背景图（文件名 bg-xx / 绝对路径 / https URL）'
       if (/^https?:\/\//i.test(value)) {
         swapBg(value)
+        currentLabel = value
+        currentKind = 'url'
+        persist()
         return '已应用网络图片（浏览器直连；若被防盗链或 CSP 拦截，请改用本地路径）'
       }
       try {
         const r = await host.call('bg-read-file', { path: value })
         if (!r || !r.ok) return '加载失败：' + (r && r.error ? r.error : '未知错误')
         swapBg('data:' + r.mime + ';base64,' + r.data)
-        return '已应用本地图片（' + Math.round(r.size / 1024) + ' KB · ' + r.path + '）'
+        currentLabel = value
+        currentKind = 'file'
+        persist()
+        return '已应用（' + Math.round(r.size / 1024) + ' KB · ' + r.path + '）'
       } catch (e) {
         return '加载失败：' + String(e && e.message ? e.message : e)
       }
@@ -351,7 +472,10 @@ export function apply(ctx) {
         const r = await host.call('bg-load-default', {})
         if (r && r.ok) {
           swapBg('data:' + r.mime + ';base64,' + r.data)
-          return '已恢复默认圣光背景'
+          currentLabel = ''
+          currentKind = ''
+          persist()
+          return '默认背景已应用（' + (r.name ? r.name : '内置圣光图') + '）'
         }
         swapBg('')
         return '默认图片不可用：' + (r && r.error ? r.error : '未知错误')
@@ -360,23 +484,88 @@ export function apply(ctx) {
         return '默认图片不可用：' + String(e && e.message ? e.message : e)
       }
     },
+    async randomBg() {
+      const names = await bgController.listBackgrounds()
+      const candidates = names.filter((n) => n !== currentLabel)
+      if (candidates.length === 0) return '背景库没有可切换的图片'
+      const pick = candidates[Math.floor(Math.random() * candidates.length)]
+      return bgController.applyValue(pick)
+    },
     clear() {
       swapBg('')
+      currentLabel = ''
+      currentKind = ''
+      persist()
       return '已移除背景图，恢复纯色皮肤'
     },
   }
 
   ctx.effect(() => () => {
     stopped = true
-    swapBg('')
+    currentSrc = ''
+    if (typeof currentBgDispose === 'function') {
+      currentBgDispose()
+      currentBgDispose = undefined
+    }
+    if (typeof decorDispose === 'function') {
+      decorDispose()
+      decorDispose = undefined
+    }
   }, 'bd2-yustia: background cleanup')
 
-  host.call('bg-load-default', {}).then((r) => {
-    if (!stopped && r && r.ok) {
-      swapBg('data:' + r.mime + ';base64,' + r.data)
-      console.log('bd2-yustia: default background applied')
+  reapplyDecor()
+
+  /* 挂载：优先恢复记忆设置，否则应用默认背景 */
+  host.call('bg-load-settings', {}).then(async (r) => {
+    if (stopped) return
+    let statusMsg = ''
+    const s = r && r.ok && r.settings ? r.settings : null
+    sidebarAlpha = clamp(s && s.sidebarAlpha, 0.3, 1, 0.7)
+    veilPct = clamp(s && s.veilPct, 0, 80, 50)
+    decorIntensity = clamp(s && s.decorIntensity, 0, 1, 1)
+    reapplyDecor()
+    if (s && s.source) {
+      currentLabel = s.source
+      currentKind = s.kind || 'file'
+      if (s.kind === 'url') {
+        swapBg(s.source)
+        statusMsg = '已恢复记忆背景（网络图片）'
+      } else {
+        const img = await host.call('bg-read-file', { path: s.source }).catch(() => null)
+        if (img && img.ok) {
+          swapBg('data:' + img.mime + ';base64,' + img.data)
+          statusMsg = '已恢复记忆背景（' + s.source + '）'
+        } else {
+          const d = await host.call('bg-load-default', {}).catch(() => null)
+          if (d && d.ok) {
+            swapBg('data:' + d.mime + ';base64,' + d.data)
+            currentLabel = ''
+            currentKind = ''
+            statusMsg = '记忆背景失效，已回退默认背景'
+          } else {
+            statusMsg = '背景加载失败'
+          }
+        }
+      }
+    } else {
+      const d = await host.call('bg-load-default', {}).catch(() => null)
+      if (d && d.ok) {
+        swapBg('data:' + d.mime + ';base64,' + d.data)
+        statusMsg = '默认背景已应用（' + (d.name ? d.name : '内置圣光图') + '）'
+      } else {
+        statusMsg = '默认背景不可用'
+      }
     }
-  }).catch((e) => console.log('bd2-yustia: default background unavailable', e))
+    resolveReady({
+      sidebarPct: Math.round(sidebarAlpha * 100),
+      veilPct: Math.round(veilPct),
+      decorPct: Math.round(decorIntensity * 100),
+      statusMsg,
+    })
+  }).catch((e) => {
+    if (stopped) return
+    resolveReady({ sidebarPct: 70, veilPct: 50, decorPct: 100, statusMsg: '设置读取失败：' + String(e && e.message ? e.message : e) })
+  })
 
   const slots = ctx.get('slots')
   if (slots !== undefined) {

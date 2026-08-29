@@ -119,4 +119,28 @@ export function apply(ctx) {
       return { ok: false, error: String(e && e.message ? e.message : e) }
     }
   })
+
+  /* 设置记忆：settings.json（读/写） */
+  const settingsPath = BASE + '/bd2-yustia-skin/settings.json'
+
+  harness.handle('bg-load-settings', async () => {
+    try {
+      const target = await fs.resolve(settingsPath, {})
+      const text = await fs.readText(target, undefined)
+      return { ok: true, settings: JSON.parse(text) }
+    } catch (e) {
+      return { ok: false, error: String(e && e.message ? e.message : e) }
+    }
+  })
+
+  harness.handle('bg-save-settings', async (args) => {
+    try {
+      const settings = args && typeof args.settings === 'object' && args.settings !== null ? args.settings : {}
+      const target = await fs.resolve(settingsPath, {})
+      await fs.writeText(target, JSON.stringify(settings, null, 2))
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String(e && e.message ? e.message : e) }
+    }
+  })
 }
