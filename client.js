@@ -196,6 +196,12 @@ function bgCssFor(src, opts) {
   const blurPx = Math.max(0, Math.min(24, Math.round((1 - a) * 30)))
   const elevLight = Math.min(100, lightPct + 12)
   const elevDark = Math.min(100, darkPct + 12)
+  const hdrLight = Math.min(100, Math.max(15, lightPct - 25))
+  const hdrDark = Math.min(100, Math.max(15, darkPct - 20))
+  const navActive = Math.round(a * 26)
+  const navHover = Math.round(a * 14)
+  const navAccent = Math.min(100, navActive + 30)
+  const fillPct = Math.round(a * 20)
   return `
 body [class*='_frame'] {
   background-color: transparent !important;
@@ -203,19 +209,37 @@ body [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #efe5d2 ${lightPct}%, transparent) !important;
   --dsw-alias-bg-layer-1: color-mix(in srgb, #fbf7ef 90%, transparent) !important;
   --dsw-alias-bg-layer-2: color-mix(in srgb, #efe6d6 84%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, #fbf7ef ${elevLight}%, transparent) !important;
+  --dsw-alias-bg-overlay: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  --dsw-alias-bg-multi-select: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
   --dsw-specific-tip: color-mix(in srgb, #fbf7ef 82%, transparent) !important;
   --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
   --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
   --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  --dsw-specific-selector: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #b0871f ${navActive}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #b0871f ${navAccent}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #b0871f ${navHover}%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #b0871f ${fillPct}%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #b0871f ${Math.max(6, fillPct - 8)}%, transparent) !important;
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
   --dsw-alias-bg-layer-1: color-mix(in srgb, #1f1a13 90%, transparent) !important;
   --dsw-alias-bg-layer-2: color-mix(in srgb, #282113 82%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, #2f261b ${elevDark}%, transparent) !important;
+  --dsw-alias-bg-overlay: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
+  --dsw-alias-bg-multi-select: color-mix(in srgb, #2b2419 ${darkPct}%, transparent) !important;
   --dsw-specific-tip: color-mix(in srgb, #1f1a13 80%, transparent) !important;
   --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 ${darkPct}%, transparent) !important;
   --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
   --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
+  --dsw-specific-selector: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c ${navActive}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #d8b25c ${navAccent}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c ${navHover}%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #d8b25c ${fillPct}%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #d8b25c ${Math.max(6, fillPct - 8)}%, transparent) !important;
 }
 body [class*='_frame'] [class*='sidebarCol'] {
   -webkit-backdrop-filter: blur(${blurPx}px);
@@ -226,12 +250,20 @@ body [class*='_frame'] [class*='_dock'] {
   backdrop-filter: blur(6px);
 }
 body [class*='_frame'] [class*='_header'] {
-  background: color-mix(in srgb, #fbf7ef 60%, transparent);
+  background: color-mix(in srgb, #fbf7ef ${hdrLight}%, transparent);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 body[data-ds-dark-theme] [class*='_frame'] [class*='_header'] {
-  background: color-mix(in srgb, #1f1a13 60%, transparent);
+  background: color-mix(in srgb, #1f1a13 ${hdrDark}%, transparent);
+}
+body [class*='_frame'] [class*='sessionLogButton'] {
+  background: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+body[data-ds-dark-theme] [class*='_frame'] [class*='sessionLogButton'] {
+  background: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
 }
 body {
   background-image:
