@@ -26,6 +26,8 @@ body [class*='_frame'] {
   --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 78%, transparent);
   --dsw-alias-interactive-bg-hover: color-mix(in srgb, #b0871f 12%, transparent);
   --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #b0871f 16%, transparent);
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-static-neutral-1000: #16130f;
@@ -36,9 +38,13 @@ body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-static-neutral-bluish-900: #1c1712;
   --dsw-static-neutral-bluish-850: #211a14;
   --dsw-static-neutral-bluish-800: #261e16;
+  --dsw-static-neutral-bluish-750: #34281c;
+  --dsw-static-neutral-bluish-700: #3d3022;
   --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 80%, transparent);
   --dsw-alias-interactive-bg-hover: color-mix(in srgb, #d8b25c 14%, transparent);
   --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #d8b25c 18%, transparent);
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b 92%, transparent);
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 90%, transparent);
 }
 ::selection {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent);
