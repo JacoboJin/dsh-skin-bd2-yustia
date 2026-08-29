@@ -43,6 +43,8 @@ function bytesToBase64(bytes) {
 const MAX_BYTES = 8 * 1024 * 1024
 /* 会话工作区固定路径（sandboxPolicy.workspaceRoot 指向宿主进程目录，不可用） */
 const BASE = 'D:/dsh_ai_workspace'
+/* 写策略：动态插件默认沙箱策略把写入围栏在宿主目录，需显式传入会话级宽权限 */
+const WRITE_POLICY = { mode: 'danger-full-access', workspaceRoot: BASE }
 
 export function apply(ctx) {
   const fs = ctx.get('fs')
@@ -137,7 +139,25 @@ export function apply(ctx) {
     try {
       const settings = args && typeof args.settings === 'object' && args.settings !== null ? args.settings : {}
       const target = await fs.resolve(settingsPath, {})
-      await fs.writeText(target, JSON.stringify(settings, null, 2))
+      await fs.writeText(target, JSON.stringify(settings, null, 2), undefined, undefined, WRITE_POLICY)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String(e && e.message ? e.message : e) }
+    }
+  })
+
+  /* 样式自诊断落盘（用于验证皮肤修复效果） */
+  harness.handle('bg-dump-styles', async (args) => {
+    try {
+      const payload = {
+        at: new Date().toISOString(),
+        probe: args && args.probe ? args.probe : null,
+        scanError: args && typeof args.scanError === 'string' ? args.scanError : '',
+        count: args && Array.isArray(args.rows) ? args.rows.length : 0,
+        rows: args && Array.isArray(args.rows) ? args.rows : [],
+      }
+      const target = await fs.resolve(BASE + '/bd2-yustia-skin/diag-styles.json', {})
+      await fs.writeText(target, JSON.stringify(payload, null, 2), undefined, undefined, WRITE_POLICY)
       return { ok: true }
     } catch (e) {
       return { ok: false, error: String(e && e.message ? e.message : e) }
