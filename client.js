@@ -158,27 +158,35 @@ const YUSTIA_TOKENS = {
   '--dsw-specific-sidebar-fill': { light: '#efe5d2', dark: '#1c1712' },
 }
 
-/** 背景 CSS：透图 + 玻璃化 + 可调帷幕（细节见 README 第五节） */
+/** 背景 CSS：透图 + 玻璃化 + 可调帷幕（可读性优化：卡片更实、标题栏 60%、帷幕默认 62%） */
 function bgCssFor(src, opts) {
   const a = Math.min(1, Math.max(0.3, opts.sidebarAlpha))
-  const veil = Math.min(80, Math.max(0, opts.veilPct))
+  const veil = Math.min(85, Math.max(0, opts.veilPct))
   const lightPct = Math.round(a * 100)
   const darkPct = Math.round(Math.max(0.2, a - 0.08) * 100)
   const blurPx = Math.max(0, Math.min(24, Math.round((1 - a) * 30)))
+  const elevLight = Math.min(100, lightPct + 12)
+  const elevDark = Math.min(100, darkPct + 12)
   return `
 body [class*='_frame'] {
   background-color: transparent !important;
   --dsw-alias-bg-base: transparent !important;
   --dsw-specific-sidebar-fill: color-mix(in srgb, #efe5d2 ${lightPct}%, transparent) !important;
-  --dsw-alias-bg-layer-1: color-mix(in srgb, #fbf7ef 82%, transparent) !important;
-  --dsw-alias-bg-layer-2: color-mix(in srgb, #efe6d6 72%, transparent) !important;
-  --dsw-specific-tip: color-mix(in srgb, #fbf7ef 70%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, #fbf7ef 90%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, #efe6d6 84%, transparent) !important;
+  --dsw-specific-tip: color-mix(in srgb, #fbf7ef 82%, transparent) !important;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
-  --dsw-alias-bg-layer-1: color-mix(in srgb, #1f1a13 82%, transparent) !important;
-  --dsw-alias-bg-layer-2: color-mix(in srgb, #282113 70%, transparent) !important;
-  --dsw-specific-tip: color-mix(in srgb, #1f1a13 68%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, #1f1a13 90%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, #282113 82%, transparent) !important;
+  --dsw-specific-tip: color-mix(in srgb, #1f1a13 80%, transparent) !important;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 ${darkPct}%, transparent) !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
 }
 body [class*='_frame'] [class*='sidebarCol'] {
   -webkit-backdrop-filter: blur(${blurPx}px);
@@ -189,12 +197,12 @@ body [class*='_frame'] [class*='_dock'] {
   backdrop-filter: blur(6px);
 }
 body [class*='_frame'] [class*='_header'] {
-  background: color-mix(in srgb, #fbf7ef 45%, transparent);
+  background: color-mix(in srgb, #fbf7ef 60%, transparent);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 body[data-ds-dark-theme] [class*='_frame'] [class*='_header'] {
-  background: color-mix(in srgb, #1f1a13 45%, transparent);
+  background: color-mix(in srgb, #1f1a13 60%, transparent);
 }
 body {
   background-image:
@@ -221,9 +229,9 @@ function YustiaRunPanel(props) {
   const [value, setValue] = React.useState('')
   const [status, setStatus] = React.useState('加载默认背景…')
   const [bgList, setBgList] = React.useState([])
-  const [sidebarPct, setSidebarPct] = React.useState(70)
-  const [veilPct, setVeilPct] = React.useState(50)
-  const [decorPct, setDecorPct] = React.useState(100)
+  const [sidebarPct, setSidebarPct] = React.useState(82)
+  const [veilPct, setVeilPct] = React.useState(62)
+  const [decorPct, setDecorPct] = React.useState(90)
   const ctrl = props.ctrl
   const run = (op) => async () => {
     setStatus('处理中…')
@@ -384,9 +392,9 @@ export function apply(ctx) {
   let currentSrc = ''
   let currentLabel = ''
   let currentKind = ''
-  let sidebarAlpha = 0.7
-  let veilPct = 50
-  let decorIntensity = 1
+  let sidebarAlpha = 0.82
+  let veilPct = 62
+  let decorIntensity = 0.9
 
   let resolveReady
   const ready = new Promise((res) => { resolveReady = res })
@@ -526,9 +534,9 @@ export function apply(ctx) {
     if (stopped) return
     let statusMsg = ''
     const s = r && r.ok && r.settings ? r.settings : null
-    sidebarAlpha = clamp(s && s.sidebarAlpha, 0.3, 1, 0.7)
-    veilPct = clamp(s && s.veilPct, 0, 80, 50)
-    decorIntensity = clamp(s && s.decorIntensity, 0, 1, 1)
+    sidebarAlpha = clamp(s && s.sidebarAlpha, 0.3, 1, 0.82)
+    veilPct = clamp(s && s.veilPct, 0, 85, 62)
+    decorIntensity = clamp(s && s.decorIntensity, 0, 1, 0.9)
     reapplyDecor()
     if (s && s.source) {
       currentLabel = s.source
@@ -570,7 +578,7 @@ export function apply(ctx) {
     })
   }).catch((e) => {
     if (stopped) return
-    resolveReady({ sidebarPct: 70, veilPct: 50, decorPct: 100, statusMsg: '设置读取失败：' + String(e && e.message ? e.message : e) })
+    resolveReady({ sidebarPct: 82, veilPct: 62, decorPct: 90, statusMsg: '设置读取失败：' + String(e && e.message ? e.message : e) })
   })
 
   const slots = ctx.get('slots')
