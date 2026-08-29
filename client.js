@@ -30,6 +30,14 @@ body [class*='_frame'] {
   --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
   --dsw-alias-toast-bg: #423a2e;
   --dsw-alias-tooltip-bg: #3a3024;
+  /* 暖色阴影/边框（消除按钮外围黑色矩形暗角） */
+  --dsw-shadow-lv1: 0 2px 4px 0 rgba(51, 41, 27, 0.10);
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(51, 41, 27, 0.08);
+  --dsw-shadow-lv2: 0 4px 12px 0 rgba(51, 41, 27, 0.10), 0 2px 8px 0 rgba(51, 41, 27, 0.10);
+  --dsw-shadow-lv3: 0 0 1px 0 rgba(51, 41, 27, 0.25), 0 0 4px 0 rgba(51, 41, 27, 0.10), 0 12px 32px 0 rgba(51, 41, 27, 0.18);
+  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #b0871f 18%, transparent);
+  --dsw-alias-border-l3: color-mix(in srgb, #b0871f 26%, transparent);
+  --dsw-alias-border-l4: color-mix(in srgb, #b0871f 32%, transparent);
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-static-neutral-1000: #16130f;
@@ -74,6 +82,14 @@ body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-alias-button-contrast-fill: #d8b25c;
   --dsw-alias-brand-primary-invert: #16130f;
   --dsw-alias-label-primary-inverted: #1a150e;
+  /* 暖色阴影/边框（消除按钮外围黑色矩形暗角） */
+  --dsw-shadow-lv1: 0 2px 4px 0 rgba(10, 7, 4, 0.45);
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(10, 7, 4, 0.35);
+  --dsw-shadow-lv2: 0 4px 12px 0 rgba(10, 7, 4, 0.40), 0 2px 8px 0 rgba(10, 7, 4, 0.42);
+  --dsw-shadow-lv3: 0 0 1px 0 rgba(10, 7, 4, 0.55), 0 0 4px 0 rgba(10, 7, 4, 0.30), 0 12px 32px 0 rgba(10, 7, 4, 0.50);
+  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #d8b25c 16%, transparent);
+  --dsw-alias-border-l3: color-mix(in srgb, #d8b25c 26%, transparent);
+  --dsw-alias-border-l4: color-mix(in srgb, #d8b25c 34%, transparent);
 }
 ::selection {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent);
