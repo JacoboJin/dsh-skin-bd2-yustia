@@ -1,95 +1,186 @@
 /**
- * 棕色尘埃2 · 悠丝缇亚 (Justia) — DSH 动态皮肤插件（Client 端参考实现，对应 pkg-18）
+ * 棕色尘埃2 · 悠丝缇亚 (Justia) — DSH 动态皮肤插件（Client 端最终参考实现，对应 pkg-31）
  *
- * 能力一览：
- * 1. 设计令牌昼夜重映射（theme.overrideTokens）
- * 2. 签名装饰（金色滚动条/选中/链接/代码块/分割线；圣光+星尘浓度可调）
- * 3. 自定义背景图：背景库下拉 / 文件名 / 绝对路径 / https URL / 随机 / 默认 / 移除
- * 4. 玻璃化：对话区与详情栏透图（bg-base→transparent）、侧栏半透明+毛玻璃、
- *    消息/工具卡玻璃（layer-1/2 令牌）、标题栏与输入区毛玻璃
- * 5. 三滑杆：侧栏透明度（30–100）、帷幕深浅（0–80）、装饰浓度（0–100）
- * 6. 设置自动记忆：settings.json（Host 读写），重新运行插件自动恢复
+ * 架构：
+ * 1. 设计令牌昼夜重映射（theme.overrideTokens，13 个内联令牌）
+ * 2. STATIC_CSS：全量暖色令牌重映射，body 作用域 + !important（覆盖 portal 弹出层），
+ *    包含深色静态中性色、deepseek 金色点缀、hovercard/ghost-active/tool-bar/label-caption/
+ *    label-quaternary/masks/skeleton、按钮填充、交互状态、代码块族、边框与阴影等
+ * 3. bgCssFor：背景模式动态层 —— body 级非内联令牌随侧栏透明度联动（含 portal），
+ *    frame 级内联令牌联动，标题栏/session log 按钮毛玻璃
+ * 4. decorCss：圣光/星尘装饰层，浓度可调
+ * 5. 面板：背景库/随机/默认/移除、三滑杆（侧栏透明度/帷幕/装饰）、状态行、诊断按钮
+ * 6. 设置自动记忆（settings.json，Host 写策略 danger-full-access）
  * 全部副作用可回收；Host 半体见 host.js。
  */
 
 const STATIC_CSS = `
-/* ===== 全面暖色令牌重映射（frame 内，昼夜双套）===== */
-body [class*='_frame'] {
-  --dsw-static-neutral-1000: #2a2118;
-  --dsw-static-neutral-900: #33291b;
-  --dsw-static-neutral-850: #3a3024;
-  --dsw-static-neutral-800: #423a2e;
-  --dsw-static-neutral-bluish-1000: #2a2118;
-  --dsw-static-neutral-bluish-900: #33291b;
-  --dsw-static-neutral-bluish-850: #3a3024;
-  --dsw-static-neutral-bluish-800: #423a2e;
-  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 78%, transparent);
-  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #b0871f 12%, transparent);
-  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #b0871f 16%, transparent);
-  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
-  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
-  --dsw-alias-toast-bg: #423a2e;
-  --dsw-alias-tooltip-bg: #3a3024;
-  /* 暖色阴影/边框（消除按钮外围黑色矩形暗角） */
-  --dsw-shadow-lv1: 0 2px 4px 0 rgba(51, 41, 27, 0.10);
-  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(51, 41, 27, 0.08);
-  --dsw-shadow-lv2: 0 4px 12px 0 rgba(51, 41, 27, 0.10), 0 2px 8px 0 rgba(51, 41, 27, 0.10);
-  --dsw-shadow-lv3: 0 0 1px 0 rgba(51, 41, 27, 0.25), 0 0 4px 0 rgba(51, 41, 27, 0.10), 0 12px 32px 0 rgba(51, 41, 27, 0.18);
-  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #b0871f 18%, transparent);
-  --dsw-alias-border-l3: color-mix(in srgb, #b0871f 26%, transparent);
-  --dsw-alias-border-l4: color-mix(in srgb, #b0871f 32%, transparent);
+/* ===== bd2-yustia 全量暖色令牌重映射（body 作用域 + !important，覆盖 portal 弹出层） ===== */
+body {
+  --dsw-static-neutral-1000: #2a2118 !important;
+  --dsw-static-neutral-900: #33291b !important;
+  --dsw-static-neutral-850: #3a3024 !important;
+  --dsw-static-neutral-800: #423a2e !important;
+  --dsw-static-neutral-700: #4d4033 !important;
+  --dsw-static-neutral-bluish-1000: #2a2118 !important;
+  --dsw-static-neutral-bluish-950: #33291b !important;
+  --dsw-static-neutral-bluish-900: #33291b !important;
+  --dsw-static-neutral-bluish-875: #3a3024 !important;
+  --dsw-static-neutral-bluish-850: #3a3024 !important;
+  --dsw-static-neutral-bluish-800: #423a2e !important;
+  --dsw-static-neutral-bluish-750: #4d4033 !important;
+  --dsw-static-neutral-bluish-700: #5b4c3c !important;
+  --dsw-static-deepseek-400: #c9a53d !important;
+  --dsw-static-deepseek-450: #b98a1e !important;
+  --dsw-static-deepseek-500: #b0871f !important;
+  --dsw-static-deepseek-600: #8f6b1a !important;
+  --dsw-static-deepseek-50: #fbf3df !important;
+  --dsw-static-deepseek-100: #f7e8c4 !important;
+  --dsw-static-deepseek-200: #efd79a !important;
+  --dsw-static-deepseek-300: #e2bf6a !important;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 78%, transparent) !important;
+  --dsw-alias-bg-multi-select: color-mix(in srgb, #f6f1e8 78%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, #fbf7ef 90%, transparent) !important;
+  --dsw-alias-bg-overlay: color-mix(in srgb, #fdfaf3 92%, transparent) !important;
+  --dsw-alias-bg-skeleton: color-mix(in srgb, #b0871f 10%, transparent) !important;
+  --dsw-alias-bg-mask-1: rgba(51, 41, 27, 0.24) !important;
+  --dsw-alias-bg-mask-2: rgba(51, 41, 27, 0.12) !important;
+  --dsw-alias-bg-mask-3: rgba(51, 41, 27, 0.48) !important;
+  --dsw-alias-bg-mask-photo: rgba(22, 19, 15, 0.88) !important;
+  --dsw-alias-bg-mask-drop: rgba(251, 247, 239, 0.70) !important;
+  --dsw-hovercard-bg: #fbf7ef !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 90%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 90%, transparent) !important;
+  --dsw-alias-button-floating-hover: color-mix(in srgb, #f6f1e8 96%, transparent) !important;
+  --dsw-alias-button-ghost-active-fill: color-mix(in srgb, #b0871f 14%, transparent) !important;
+  --dsw-alias-button-ghost-active-hover: color-mix(in srgb, #b0871f 20%, transparent) !important;
+  --dsw-alias-button-ghost-active-border: color-mix(in srgb, #b0871f 40%, transparent) !important;
+  --dsw-alias-button-primary-hover: #8f6b1a !important;
+  --dsw-alias-button-contrast-fill: #b0871f !important;
+  --dsw-alias-button-tool-bar-fill: rgba(122, 92, 22, 0.5) !important;
+  --dsw-alias-button-tool-bar-hover: rgba(122, 92, 22, 0.6) !important;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(122, 92, 22, 0.36) !important;
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #b0871f 12%, transparent) !important;
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, #b0871f 16%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-solid: color-mix(in srgb, #b0871f 14%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-accent: color-mix(in srgb, #b0871f 20%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-danger: color-mix(in srgb, #b23a48 8%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #b0871f 8%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #b0871f 16%, transparent) !important;
+  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #b0871f 16%, transparent) !important;
+  --dsw-specific-selector: color-mix(in srgb, #f6f1e8 78%, transparent) !important;
+  --dsw-specific-bubble: color-mix(in srgb, #f6f1e8 95%, transparent) !important;
+  --dsw-specific-bubble-highlight: #b0871f !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #b0871f 22%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #b0871f 52%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #b0871f 12%, transparent) !important;
+  --dsw-alias-markdown-code-block: #f6f1e8 !important;
+  --dsw-alias-markdown-code-block-banner: #efe6d6 !important;
+  --dsw-alias-markdown-code-segment-selected: #fbf7ef !important;
+  --dsw-alias-markdown-code-segment-unselected: #efe6d6 !important;
+  --dsw-alias-markdown-inline-code: #f6f1e8 !important;
+  --dsw-alias-markdown-citation: #f6f1e8 !important;
+  --dsw-alias-markdown-tag: color-mix(in srgb, #f6f1e8 80%, transparent) !important;
+  --dsw-alias-markdown-placeholder: color-mix(in srgb, #efe6d6 80%, transparent) !important;
+  --dsw-alias-label-quaternary: #8d7d6a !important;
+  --dsw-alias-label-caption: #8a7448 !important;
+  --dsw-alias-label-dimmed: #8d7d6a !important;
+  --dsw-alias-label-primary-inverted: #fdfaf3 !important;
+  --dsw-alias-label-primary-dimmed: #3a3024 !important;
+  --dsw-alias-brand-primary-invert: #33291b !important;
+  --dsw-alias-brand-text: #33291b !important;
+  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #b0871f 18%, transparent) !important;
+  --dsw-alias-border-l3: color-mix(in srgb, #b0871f 26%, transparent) !important;
+  --dsw-alias-border-l4: color-mix(in srgb, #b0871f 32%, transparent) !important;
+  --dsw-alias-toast-bg: #423a2e !important;
+  --dsw-alias-tooltip-bg: #3a3024 !important;
+  --dsw-shadow-lv1: 0 2px 4px 0 rgba(51, 41, 27, 0.10) !important;
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(51, 41, 27, 0.08) !important;
+  --dsw-shadow-lv2: 0 4px 12px 0 rgba(51, 41, 27, 0.10), 0 2px 8px 0 rgba(51, 41, 27, 0.10) !important;
+  --dsw-shadow-lv3: 0 0 1px 0 rgba(51, 41, 27, 0.25), 0 0 4px 0 rgba(51, 41, 27, 0.10), 0 12px 32px 0 rgba(51, 41, 27, 0.18) !important;
 }
-body[data-ds-dark-theme] [class*='_frame'] {
-  --dsw-static-neutral-1000: #16130f;
-  --dsw-static-neutral-900: #1c1712;
-  --dsw-static-neutral-850: #211a14;
-  --dsw-static-neutral-800: #261e16;
-  --dsw-static-neutral-bluish-1000: #16130f;
-  --dsw-static-neutral-bluish-900: #1c1712;
-  --dsw-static-neutral-bluish-850: #211a14;
-  --dsw-static-neutral-bluish-800: #261e16;
-  --dsw-static-neutral-bluish-750: #34281c;
-  --dsw-static-neutral-bluish-700: #3d3022;
-  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 80%, transparent);
-  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #d8b25c 14%, transparent);
-  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #d8b25c 18%, transparent);
-  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b 92%, transparent);
-  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 90%, transparent);
-  /* 表面层：创造模式卡片 / 弹层 / 多选 */
-  --dsw-alias-bg-layer-3: color-mix(in srgb, #2f261b 88%, transparent);
-  --dsw-alias-bg-overlay: color-mix(in srgb, #2b2419 92%, transparent);
-  --dsw-alias-bg-multi-select: color-mix(in srgb, #2b2419 88%, transparent);
-  /* 侧栏条目：分组/会话项 */
-  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c 22%, transparent);
-  --dsw-specific-sidebar-nav-item-active-accent: #d8b25c;
-  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c 12%, transparent);
-  /* 输入区选择器 / 用户气泡 */
-  --dsw-specific-selector: color-mix(in srgb, #33291b 88%, transparent);
-  --dsw-specific-bubble: color-mix(in srgb, #33291b 90%, transparent);
-  --dsw-specific-bubble-highlight: #d8b25c;
-  /* 代码块族：session log / 代码视图暖化 */
-  --dsw-alias-markdown-code-block: #241c12;
-  --dsw-alias-markdown-code-block-banner: #2b2215;
-  --dsw-alias-markdown-code-segment-selected: #34281c;
-  --dsw-alias-markdown-code-segment-unselected: #241c12;
-  --dsw-alias-markdown-inline-code: #34281c;
-  --dsw-alias-markdown-citation: #34281c;
-  --dsw-alias-markdown-tag: #3a2f22;
-  --dsw-alias-markdown-placeholder: #3a2f22;
-  /* 其他深色杂项 */
-  --dsw-alias-toast-bg: #423a2e;
-  --dsw-alias-tooltip-bg: #3a3024;
-  --dsw-alias-button-contrast-fill: #d8b25c;
-  --dsw-alias-brand-primary-invert: #16130f;
-  --dsw-alias-label-primary-inverted: #1a150e;
-  /* 暖色阴影/边框（消除按钮外围黑色矩形暗角） */
-  --dsw-shadow-lv1: 0 2px 4px 0 rgba(10, 7, 4, 0.45);
-  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(10, 7, 4, 0.35);
-  --dsw-shadow-lv2: 0 4px 12px 0 rgba(10, 7, 4, 0.40), 0 2px 8px 0 rgba(10, 7, 4, 0.42);
-  --dsw-shadow-lv3: 0 0 1px 0 rgba(10, 7, 4, 0.55), 0 0 4px 0 rgba(10, 7, 4, 0.30), 0 12px 32px 0 rgba(10, 7, 4, 0.50);
-  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #d8b25c 16%, transparent);
-  --dsw-alias-border-l3: color-mix(in srgb, #d8b25c 26%, transparent);
-  --dsw-alias-border-l4: color-mix(in srgb, #d8b25c 34%, transparent);
+body[data-ds-dark-theme] {
+  --dsw-static-neutral-1000: #16130f !important;
+  --dsw-static-neutral-900: #1c1712 !important;
+  --dsw-static-neutral-850: #211a14 !important;
+  --dsw-static-neutral-800: #261e16 !important;
+  --dsw-static-neutral-700: #2e241a !important;
+  --dsw-static-neutral-bluish-1000: #16130f !important;
+  --dsw-static-neutral-bluish-950: #1c1712 !important;
+  --dsw-static-neutral-bluish-900: #1c1712 !important;
+  --dsw-static-neutral-bluish-875: #211a14 !important;
+  --dsw-static-neutral-bluish-850: #211a14 !important;
+  --dsw-static-neutral-bluish-800: #261e16 !important;
+  --dsw-static-neutral-bluish-750: #2e241a !important;
+  --dsw-static-neutral-bluish-700: #382c1f !important;
+  --dsw-static-deepseek-400: #d8b25c !important;
+  --dsw-static-deepseek-450: #c9a53d !important;
+  --dsw-static-deepseek-500: #b0871f !important;
+  --dsw-static-deepseek-600: #e0bd66 !important;
+  --dsw-static-deepseek-50: #241c12 !important;
+  --dsw-static-deepseek-100: #2e241a !important;
+  --dsw-static-deepseek-200: #3a2f22 !important;
+  --dsw-static-deepseek-300: #4d4033 !important;
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 80%, transparent) !important;
+  --dsw-alias-bg-multi-select: color-mix(in srgb, #2b2419 88%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, #2f261b 88%, transparent) !important;
+  --dsw-alias-bg-overlay: color-mix(in srgb, #2b2419 92%, transparent) !important;
+  --dsw-alias-bg-skeleton: color-mix(in srgb, #d8b25c 10%, transparent) !important;
+  --dsw-alias-bg-mask-1: rgba(10, 7, 4, 0.50) !important;
+  --dsw-alias-bg-mask-2: rgba(10, 7, 4, 0.30) !important;
+  --dsw-alias-bg-mask-3: rgba(10, 7, 4, 0.55) !important;
+  --dsw-alias-bg-mask-photo: rgba(10, 7, 4, 0.88) !important;
+  --dsw-alias-bg-mask-drop: rgba(30, 24, 16, 0.70) !important;
+  --dsw-hovercard-bg: #282113 !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b 92%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 90%, transparent) !important;
+  --dsw-alias-button-floating-hover: color-mix(in srgb, #33291b 92%, transparent) !important;
+  --dsw-alias-button-ghost-active-fill: color-mix(in srgb, #d8b25c 18%, transparent) !important;
+  --dsw-alias-button-ghost-active-hover: color-mix(in srgb, #d8b25c 24%, transparent) !important;
+  --dsw-alias-button-ghost-active-border: color-mix(in srgb, #d8b25c 45%, transparent) !important;
+  --dsw-alias-button-primary-hover: #e0bd66 !important;
+  --dsw-alias-button-contrast-fill: #d8b25c !important;
+  --dsw-alias-button-tool-bar-fill: rgba(51, 41, 27, 0.62) !important;
+  --dsw-alias-button-tool-bar-hover: rgba(51, 41, 27, 0.72) !important;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(51, 41, 27, 0.45) !important;
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #d8b25c 14%, transparent) !important;
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, #d8b25c 18%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-solid: color-mix(in srgb, #d8b25c 16%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-accent: color-mix(in srgb, #d8b25c 22%, transparent) !important;
+  --dsw-alias-interactive-bg-hover-danger: color-mix(in srgb, #d96a77 10%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #d8b25c 10%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #d8b25c 18%, transparent) !important;
+  --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #d8b25c 18%, transparent) !important;
+  --dsw-specific-selector: color-mix(in srgb, #33291b 88%, transparent) !important;
+  --dsw-specific-bubble: color-mix(in srgb, #33291b 90%, transparent) !important;
+  --dsw-specific-bubble-highlight: #d8b25c !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c 22%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: #d8b25c !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c 12%, transparent) !important;
+  --dsw-alias-markdown-code-block: #241c12 !important;
+  --dsw-alias-markdown-code-block-banner: #2b2215 !important;
+  --dsw-alias-markdown-code-segment-selected: #34281c !important;
+  --dsw-alias-markdown-code-segment-unselected: #241c12 !important;
+  --dsw-alias-markdown-inline-code: #34281c !important;
+  --dsw-alias-markdown-citation: #34281c !important;
+  --dsw-alias-markdown-tag: #3a2f22 !important;
+  --dsw-alias-markdown-placeholder: #3a2f22 !important;
+  --dsw-alias-label-quaternary: #9c8d70 !important;
+  --dsw-alias-label-caption: #a08a5c !important;
+  --dsw-alias-label-dimmed: #9c8d70 !important;
+  --dsw-alias-label-primary-inverted: #1a150e !important;
+  --dsw-alias-label-primary-dimmed: #c9b489 !important;
+  --dsw-alias-brand-primary-invert: #16130f !important;
+  --dsw-alias-brand-text: #d8b25c !important;
+  --dsw-alias-border-l2-darkmode-thin: color-mix(in srgb, #d8b25c 16%, transparent) !important;
+  --dsw-alias-border-l3: color-mix(in srgb, #d8b25c 26%, transparent) !important;
+  --dsw-alias-border-l4: color-mix(in srgb, #d8b25c 34%, transparent) !important;
+  --dsw-alias-toast-bg: #423a2e !important;
+  --dsw-alias-tooltip-bg: #3a3024 !important;
+  --dsw-shadow-lv1: 0 2px 4px 0 rgba(10, 7, 4, 0.45) !important;
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(10, 7, 4, 0.35) !important;
+  --dsw-shadow-lv2: 0 4px 12px 0 rgba(10, 7, 4, 0.40), 0 2px 8px 0 rgba(10, 7, 4, 0.42) !important;
+  --dsw-shadow-lv3: 0 0 1px 0 rgba(10, 7, 4, 0.55), 0 0 4px 0 rgba(10, 7, 4, 0.30), 0 12px 32px 0 rgba(10, 7, 4, 0.50) !important;
 }
 ::selection {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent);
@@ -142,7 +233,6 @@ hr {
 }
 `
 
-/** 圣光/星尘装饰层：浓度可调（0–1） */
 function decorCss(intensity) {
   const i = Math.min(1, Math.max(0, Number(intensity) || 0))
   const b1 = (0.38 * i).toFixed(3)
@@ -203,7 +293,7 @@ const YUSTIA_TOKENS = {
   '--dsw-specific-sidebar-fill': { light: '#efe5d2', dark: '#1c1712' },
 }
 
-/** 背景 CSS：透图 + 玻璃化 + 可调帷幕（可读性优化：卡片更实、标题栏 60%、帷幕默认 62%） */
+/** 背景 CSS：body 级非内联令牌 + frame 级内联令牌随滑杆联动（详见 README） */
 function bgCssFor(src, opts) {
   const a = Math.min(1, Math.max(0.3, opts.sidebarAlpha))
   const veil = Math.min(85, Math.max(0, opts.veilPct))
@@ -218,7 +308,33 @@ function bgCssFor(src, opts) {
   const navHover = Math.round(a * 14)
   const navAccent = Math.min(100, navActive + 30)
   const fillPct = Math.round(a * 20)
+  const hoverLight = Math.round(a * 16)
+  const hoverDark = Math.round(a * 18)
   return `
+body {
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #b0871f ${hoverLight}%, transparent) !important;
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, #b0871f ${Math.min(100, hoverLight + 4)}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #b0871f ${navActive}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #b0871f ${navAccent}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #b0871f ${navHover}%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #b0871f ${fillPct}%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #b0871f ${Math.max(6, fillPct - 8)}%, transparent) !important;
+}
+body[data-ds-dark-theme] {
+  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 ${darkPct}%, transparent) !important;
+  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
+  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #d8b25c ${hoverDark}%, transparent) !important;
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, #d8b25c ${Math.min(100, hoverDark + 4)}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c ${navActive}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #d8b25c ${navAccent}%, transparent) !important;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c ${navHover}%, transparent) !important;
+  --dsw-alias-fill-l2: color-mix(in srgb, #d8b25c ${fillPct}%, transparent) !important;
+  --dsw-alias-fill-l1: color-mix(in srgb, #d8b25c ${Math.max(6, fillPct - 8)}%, transparent) !important;
+}
 body [class*='_frame'] {
   background-color: transparent !important;
   --dsw-alias-bg-base: transparent !important;
@@ -229,15 +345,7 @@ body [class*='_frame'] {
   --dsw-alias-bg-overlay: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
   --dsw-alias-bg-multi-select: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
   --dsw-specific-tip: color-mix(in srgb, #fbf7ef 82%, transparent) !important;
-  --dsw-alias-bg-module-platform: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
-  --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
-  --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 ${elevLight}%, transparent) !important;
   --dsw-specific-selector: color-mix(in srgb, #f6f1e8 ${lightPct}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #b0871f ${navActive}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #b0871f ${navAccent}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #b0871f ${navHover}%, transparent) !important;
-  --dsw-alias-fill-l2: color-mix(in srgb, #b0871f ${fillPct}%, transparent) !important;
-  --dsw-alias-fill-l1: color-mix(in srgb, #b0871f ${Math.max(6, fillPct - 8)}%, transparent) !important;
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
@@ -247,15 +355,7 @@ body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-alias-bg-overlay: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
   --dsw-alias-bg-multi-select: color-mix(in srgb, #2b2419 ${darkPct}%, transparent) !important;
   --dsw-specific-tip: color-mix(in srgb, #1f1a13 80%, transparent) !important;
-  --dsw-alias-bg-module-platform: color-mix(in srgb, #282113 ${darkPct}%, transparent) !important;
-  --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
-  --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 ${elevDark}%, transparent) !important;
   --dsw-specific-selector: color-mix(in srgb, #33291b ${elevDark}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c ${navActive}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #d8b25c ${navAccent}%, transparent) !important;
-  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c ${navHover}%, transparent) !important;
-  --dsw-alias-fill-l2: color-mix(in srgb, #d8b25c ${fillPct}%, transparent) !important;
-  --dsw-alias-fill-l1: color-mix(in srgb, #d8b25c ${Math.max(6, fillPct - 8)}%, transparent) !important;
 }
 body [class*='_frame'] [class*='sidebarCol'] {
   -webkit-backdrop-filter: blur(${blurPx}px);
@@ -325,6 +425,7 @@ function YustiaRunPanel(props) {
       setVeilPct(st.veilPct)
       setDecorPct(st.decorPct)
       setStatus(st.statusMsg)
+      ctrl.diagnose().then((msg) => setStatus(msg)).catch(() => {})
     }).catch(() => {})
     return () => { alive = false }
   }, [])
@@ -433,13 +534,17 @@ function YustiaRunPanel(props) {
     ),
     React.createElement('div', { style: rowStyle },
       React.createElement('span', { style: labelStyle }, '帷幕深浅'),
-      React.createElement('input', { type: 'range', min: 0, max: 80, step: 5, value: veilPct, onChange: onVeil, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
+      React.createElement('input', { type: 'range', min: 0, max: 85, step: 5, value: veilPct, onChange: onVeil, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
       React.createElement('span', { style: labelStyle }, veilPct + '%'),
     ),
     React.createElement('div', { style: rowStyle },
       React.createElement('span', { style: labelStyle }, '装饰浓度'),
       React.createElement('input', { type: 'range', min: 0, max: 100, step: 5, value: decorPct, onChange: onDecor, onMouseUp: () => ctrl.persist(), onTouchEnd: () => ctrl.persist(), style: sliderStyle }),
       React.createElement('span', { style: labelStyle }, decorPct + '%'),
+    ),
+    React.createElement('div', { style: rowStyle },
+      React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.diagnose()) }, '诊断'),
+      React.createElement('span', { style: labelStyle }, '扫描着色元素写入 diag-styles.json'),
     ),
     React.createElement('p', { style: subStyle }, '背景库：bd2-yustia-skin/backgrounds/，命名 bg-<名称>.<扩展名>；命名为 bg-default.* 即为默认背景；设置自动记忆'),
     React.createElement('p', { style: subStyle }, status),
@@ -510,8 +615,58 @@ export function apply(ctx) {
     } catch (e) {}
   }
 
+  async function diagnose() {
+    const probe = {}
+    try { probe.documentType = typeof document } catch (e) { probe.documentType = 'err' }
+    let rows = []
+    let scanError = ''
+    try {
+      if (typeof document !== 'undefined') {
+        const selectors = [
+          "[class*='_frame']",
+          "[class*='sessionLogButton']",
+          "[class*='sidebarCol']",
+          "[class*='_header']",
+        ]
+        for (const sel of selectors) {
+          const root = document.querySelector(sel)
+          if (!root) continue
+          const els = [root, ...root.querySelectorAll('*')]
+          for (const el of els) {
+            const cs = getComputedStyle(el)
+            const bg = cs.backgroundColor || ''
+            const shadow = cs.boxShadow || ''
+            const bf = cs.backdropFilter || cs.webkitBackdropFilter || ''
+            if ((bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') || (shadow && shadow !== 'none') || (bf && bf !== 'none')) {
+              rows.push({
+                tag: el.tagName,
+                cls: String(typeof el.className === 'string' ? el.className : (el.className && el.className.baseVal) || '').slice(0, 90),
+                bg: bg.slice(0, 60),
+                shadow: shadow.slice(0, 70),
+                bf: bf.slice(0, 40),
+              })
+            }
+            if (rows.length > 160) break
+          }
+          if (rows.length > 160) break
+        }
+      } else {
+        scanError = 'document undefined'
+      }
+    } catch (e) {
+      scanError = String(e && e.message ? e.message : e)
+    }
+    try {
+      const r = await host.call('bg-dump-styles', { probe, scanError, rows })
+      return '诊断完成 rows=' + rows.length + (scanError ? ' err=' + scanError : '') + ((r && r.ok) ? '（已写盘）' : '（写盘失败：' + (r && r.error ? r.error : '') + '）')
+    } catch (e) {
+      return '诊断回传失败：' + String(e && e.message ? e.message : e)
+    }
+  }
+
   const bgController = {
     ready,
+    diagnose,
     async listBackgrounds() {
       try {
         const r = await host.call('bg-list', {})
@@ -522,17 +677,17 @@ export function apply(ctx) {
     },
     persist,
     async setSidebarAlpha(v) {
-      sidebarAlpha = clamp(v, 0.3, 1, 0.7)
+      sidebarAlpha = clamp(v, 0.3, 1, 0.82)
       reapplyBg()
-      return '侧栏透明度 ' + Math.round(sidebarAlpha * 100) + '%（毛玻璃联动）'
+      return '侧栏透明度 ' + Math.round(sidebarAlpha * 100) + '%（侧栏/标题栏/胶囊/条目/hover 状态同步联动）'
     },
     async setVeil(v) {
-      veilPct = clamp(v, 0, 80, 50)
+      veilPct = clamp(v, 0, 85, 62)
       reapplyBg()
       return '帷幕深浅 ' + veilPct + '%'
     },
     async setDecor(v) {
-      decorIntensity = clamp(v / 100, 0, 1, 1)
+      decorIntensity = clamp(v / 100, 0, 1, 0.9)
       reapplyDecor()
       return '装饰浓度 ' + Math.round(decorIntensity * 100) + '%'
     },
@@ -606,7 +761,6 @@ export function apply(ctx) {
 
   reapplyDecor()
 
-  /* 挂载：优先恢复记忆设置，否则应用默认背景 */
   host.call('bg-load-settings', {}).then(async (r) => {
     if (stopped) return
     let statusMsg = ''
