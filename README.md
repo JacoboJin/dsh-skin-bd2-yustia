@@ -124,9 +124,10 @@ export function apply(ctx: Context): void {
 | 「移除」按钮 | 移除背景图，回到纯色皮肤 |
 
 - 背景 CSS 自带一层 **50% 底色帷幕**（`color-mix(var(--dsw-alias-bg-base))`，昼夜自适应），保证文字可读；
-- 启用背景时会同时把外壳 AppFrame 的不透明背景置透明（`body [class*='_frame']`），否则图片会被外壳容器完全遮挡；
+- 启用背景时会同时把外壳 AppFrame 的不透明背景置透明（`body [class*='_frame']`），否则图片会被外壳容器完全遮挡；装饰层以高 z-index 浮于内容之上；
 - 切换背景会先 dispose 上一张的样式表，停止插件时全部回收；
-- 换默认图：直接替换 `assets/default-bg.jpg`（16:9，≤ 8 MB），重新运行插件或点「默认」即可。
+- ⚠️ 已知坑：动态插件宿主上下文里 `sandboxPolicy.workspaceRoot` 指向 DSH 宿主进程目录（本机为 `C:\Windows\System32`），**不是**会话工作区。Host 半体（`host.js`）因此使用固定会话工作区路径（`D:/dsh_ai_workspace`）；迁移机器/工作区时改这一处即可；
+- 换默认图：把图片命名为 `bg-default.*` 放入 `backgrounds/`，或直接替换 `assets/default-bg.jpg`（16:9，≤ 8 MB）。
 
 > 说明：静态皮肤包形态（`lib/`）保持基础皮肤能力；背景图交互依赖动态运行时的 `harness` RPC，仅动态插件提供。
 
@@ -137,7 +138,8 @@ export function apply(ctx: Context): void {
 ```
 bd2-yustia-skin/
 ├── skin.json            # 皮肤清单（对齐 dsh-themes 格式，含 preview 路径）
-├── client.js            # 动态运行时版 Client 半体源码（pkg-4：皮肤 + 背景图控制）
+├── client.js            # 动态运行时版 Client 半体源码（皮肤 + 背景图控制）
+├── host.js              # 动态运行时版 Host 半体源码（背景文件读取 RPC）
 ├── yustia.module.css    # 签名装饰 CSS（独立文件版）
 ├── lib/index.js         # 静态包 Host 半体（空实现，已预构建）
 ├── lib/client.js        # 静态包 Client 半体（document 形态，基础皮肤能力）
@@ -148,6 +150,7 @@ bd2-yustia-skin/
 ├── preview/dark.png     # 深色预览（脚本生成）
 ├── cordis.patch.yml     # 静态包组合补丁
 ├── package.json         # 静态包契约（dsh.client.platform: "web"）
+├── LICENSE              # MIT 许可证
 └── README.md            # 本文件
 ```
 
