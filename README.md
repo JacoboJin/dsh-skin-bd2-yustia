@@ -1,6 +1,17 @@
 # 棕色尘埃2 · 悠丝缇亚 — DSH 皮肤插件
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-d8b25c.svg)](LICENSE)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-skin-16130f.svg)](https://github.com/deepseek-ai/deepseek-harness)
+
 以《棕色尘埃2》(Brown Dust 2) 的圣剑骑士 **悠丝缇亚（Justia / ユースティア）** 为灵感的 DSH Web GUI 皮肤，昼夜双模式，纯展示层、可热插拔。
+
+## 预览
+
+| 浅色 · 象牙白 × 圣金 | 深色 · 深夜暖黑 × 烛光金 |
+|---|---|
+| ![悠丝缇亚皮肤浅色预览](preview/light.png) | ![悠丝缇亚皮肤深色预览](preview/dark.png) |
+
+## 特性
 
 - 浅色：暖象牙底 + 圣金主色（白金圣骑士）
 - 深色：深夜暖黑 + 烛光金（烛火下的骑士团大厅）
