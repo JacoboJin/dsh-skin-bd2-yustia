@@ -124,6 +124,7 @@ export function apply(ctx: Context): void {
 | 「移除」按钮 | 移除背景图，回到纯色皮肤 |
 
 - 背景 CSS 自带一层 **50% 底色帷幕**（`color-mix(var(--dsw-alias-bg-base))`，昼夜自适应），保证文字可读；
+- 启用背景时会同时把外壳 AppFrame 的不透明背景置透明（`body [class*='_frame']`），否则图片会被外壳容器完全遮挡；
 - 切换背景会先 dispose 上一张的样式表，停止插件时全部回收；
 - 换默认图：直接替换 `assets/default-bg.jpg`（16:9，≤ 8 MB），重新运行插件或点「默认」即可。
 

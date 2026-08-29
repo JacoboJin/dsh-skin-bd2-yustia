@@ -20,7 +20,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 9999;
   background-image:
     radial-gradient(ellipse at 85% -10%, color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent) 0%, transparent 55%),
     radial-gradient(ellipse at -10% 105%, color-mix(in srgb, var(--dsw-alias-brand-primary) 11%, transparent) 0%, transparent 45%);
@@ -32,7 +32,7 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 9999;
   background-image:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--dsw-alias-brand-primary) 60%, transparent) 0 1.5px, transparent 3.2px),
     radial-gradient(circle at 80% 12%, color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, transparent) 0 1.2px, transparent 2.8px),
@@ -119,6 +119,9 @@ const YUSTIA_TOKENS = {
 /** 背景 CSS：底层图片 + 上层 50% 底色帷幕（昼夜自适应） */
 function bgCssFor(src) {
   return `
+body [class*='_frame'] {
+  background-color: transparent !important;
+}
 body {
   background-image:
     linear-gradient(color-mix(in srgb, var(--dsw-alias-bg-base) 50%, transparent), color-mix(in srgb, var(--dsw-alias-bg-base) 50%, transparent)),
@@ -142,7 +145,7 @@ const SWATCHES = [
 
 function YustiaRunPanel(props) {
   const [value, setValue] = React.useState('')
-  const [status, setStatus] = React.useState('默认圣光背景已启用')
+  const [status, setStatus] = React.useState('加载默认背景…')
   const [bgList, setBgList] = React.useState([])
   const ctrl = props.ctrl
   const run = (op) => async () => {
@@ -154,6 +157,11 @@ function YustiaRunPanel(props) {
     ctrl.listBackgrounds().then((names) => {
       if (alive) setBgList(names)
     }).catch(() => {})
+    ctrl.applyDefault().then((msg) => {
+      if (alive) setStatus(msg)
+    }).catch((e) => {
+      if (alive) setStatus('默认背景加载失败：' + String(e && e.message ? e.message : e))
+    })
     return () => { alive = false }
   }, [])
   const cardStyle = {
