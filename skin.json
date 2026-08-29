@@ -11,6 +11,7 @@
   ],
   "accent": "#b0871f",
   "accentDark": "#d8b25c",
+  "license": "MIT",
   "bodyAttr": "data-dsh-bd2-yustia",
   "package": "@dsh-session/dsh-skin-bd2-yustia",
   "wiring": {
