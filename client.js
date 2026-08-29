@@ -117,10 +117,22 @@ const YUSTIA_TOKENS = {
 }
 
 /** 背景 CSS：底层图片 + 上层 50% 底色帷幕（昼夜自适应） */
-function bgCssFor(src) {
+/** 背景 CSS：
+ *  1. AppFrame 上把 bg-base 重定义为 transparent，对话区/详情栏透出图片；
+ *  2. sidebar-fill 按 alpha 半透明（昼夜微调），侧栏透出图片；
+ *  3. body 底层图片 + 50% 底色帷幕保证文字可读。 */
+function bgCssFor(src, alpha) {
+  const a = Math.min(1, Math.max(0.3, alpha))
+  const lightPct = Math.round(a * 100)
+  const darkPct = Math.round(Math.max(0.2, a - 0.08) * 100)
   return `
 body [class*='_frame'] {
   background-color: transparent !important;
+  --dsw-alias-bg-base: transparent !important;
+  --dsw-specific-sidebar-fill: color-mix(in srgb, #efe5d2 ${lightPct}%, transparent) !important;
+}
+body[data-ds-dark-theme] [class*='_frame'] {
+  --dsw-specific-sidebar-fill: color-mix(in srgb, #1c1712 ${darkPct}%, transparent) !important;
 }
 body {
   background-image:
@@ -147,6 +159,7 @@ function YustiaRunPanel(props) {
   const [value, setValue] = React.useState('')
   const [status, setStatus] = React.useState('加载默认背景…')
   const [bgList, setBgList] = React.useState([])
+  const [sidebarPct, setSidebarPct] = React.useState(70)
   const ctrl = props.ctrl
   const run = (op) => async () => {
     setStatus('处理中…')
@@ -205,6 +218,11 @@ function YustiaRunPanel(props) {
     background: 'transparent', color: 'var(--dsw-alias-brand-primary)',
     border: '1px solid var(--dsw-alias-border-l2)',
   }
+  const onSidebarAlpha = (e) => {
+    const pct = Number(e.target.value)
+    setSidebarPct(pct)
+    ctrl.setSidebarAlpha(pct / 100).then((msg) => setStatus(msg)).catch(() => {})
+  }
   return React.createElement('div', { style: cardStyle },
     React.createElement('p', { style: titleStyle }, '棕色尘埃2 · 悠丝缇亚 — 白金圣骑士皮肤已生效'),
     React.createElement('p', { style: subStyle }, '象牙白 × 圣金（日）｜深夜暖黑 × 烛光金（夜）· 停止插件即恢复原主题'),
@@ -245,6 +263,16 @@ function YustiaRunPanel(props) {
       React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.applyDefault()) }, '默认'),
       React.createElement('button', { style: ghostStyle, onClick: run(() => ctrl.clear()) }, '移除'),
     ),
+    React.createElement('div', { style: rowStyle },
+      React.createElement('span', { style: labelStyle }, '侧栏透明度'),
+      React.createElement('input', {
+        type: 'range', min: 30, max: 100, step: 5,
+        value: sidebarPct,
+        onChange: onSidebarAlpha,
+        style: { flex: 1, minWidth: 140, accentColor: 'var(--dsw-alias-brand-primary)' },
+      }),
+      React.createElement('span', { style: labelStyle }, sidebarPct + '%'),
+    ),
     React.createElement('p', { style: subStyle }, '背景库：bd2-yustia-skin/backgrounds/，命名 bg-<名称>.<png|jpg|webp|gif|avif|bmp|svg>'),
     React.createElement('p', { style: subStyle }, status),
   )
@@ -263,14 +291,21 @@ export function apply(ctx) {
 
   let currentBgDispose
   let stopped = false
+  let currentSrc = ''
+  let sidebarAlpha = 0.7
 
-  function swapBg(src) {
-    if (stopped) return
+  function reapplyBg() {
     if (typeof currentBgDispose === 'function') {
       currentBgDispose()
       currentBgDispose = undefined
     }
-    if (src) currentBgDispose = styles.insert(bgCssFor(src))
+    if (currentSrc) currentBgDispose = styles.insert(bgCssFor(currentSrc, sidebarAlpha))
+  }
+
+  function swapBg(src) {
+    if (stopped) return
+    currentSrc = src
+    reapplyBg()
   }
 
   const bgController = {
@@ -281,6 +316,13 @@ export function apply(ctx) {
       } catch (e) {
         return []
       }
+    },
+    async setSidebarAlpha(v) {
+      const n = Number(v)
+      if (!Number.isFinite(n)) return '透明度参数无效'
+      sidebarAlpha = Math.min(1, Math.max(0.3, n))
+      reapplyBg()
+      return '侧栏透明度 ' + Math.round(sidebarAlpha * 100) + '%'
     },
     async applyValue(raw) {
       const value = String(raw || '').trim()

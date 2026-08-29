@@ -122,6 +122,7 @@ export function apply(ctx: Context): void {
 | `https://…` URL | 浏览器直连 CSS `url()`（背景图不受 CORS 限制；防盗链/CSP 拦截时请改用本地路径） |
 | 「默认」按钮 | 恢复 `assets/default-bg.jpg` 圣光背景（挂载时自动应用） |
 | 「移除」按钮 | 移除背景图，回到纯色皮肤 |
+| **侧栏透明度滑杆** | 30%–100%：左侧会话栏按百分比半透明透出背景图（浅色略高于深色，保证可读性） |
 
 - 背景 CSS 自带一层 **50% 底色帷幕**（`color-mix(var(--dsw-alias-bg-base))`，昼夜自适应），保证文字可读；
 - 启用背景时会同时把外壳 AppFrame 的不透明背景置透明（`body [class*='_frame']`），否则图片会被外壳容器完全遮挡；装饰层以高 z-index 浮于内容之上；
