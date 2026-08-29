@@ -1,0 +1,4 @@
+# bd2-yustia skin bundle patch: inserts its dshClient row into the web plugin roster.
+- insert:
+    - id: ui-skin-bd2-yustia
+      name: '@dsh-session/dsh-skin-bd2-yustia'

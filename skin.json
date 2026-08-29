@@ -1,0 +1,31 @@
+{
+  "id": "bd2-yustia",
+  "name": "棕色尘埃2 · 悠丝缇亚",
+  "nameEn": "Brown Dust 2 · Justia (Yustia)",
+  "author": "dsh-session",
+  "tagline": "象牙白与圣金辉映的圣剑骑士",
+  "description": "以《棕色尘埃2》悠丝缇亚（Justia / ユースティア）白金圣骑士形象为灵感的昼夜双模式皮肤：暖象牙底、圣金主色、烛光金暗夜。",
+  "tags": [
+    "游戏",
+    "棕色尘埃2"
+  ],
+  "accent": "#b0871f",
+  "accentDark": "#d8b25c",
+  "bodyAttr": "data-dsh-bd2-yustia",
+  "package": "@dsh-session/dsh-skin-bd2-yustia",
+  "wiring": {
+    "id": "ui-skin-bd2-yustia",
+    "bundleWired": false
+  },
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "source": {
+    "reference": [
+      "https://github.com/whyihaveyou/dsh-themes/tree/main/skins/hsr-kafka",
+      "https://www.gamekee.com/zsca2/tj/626508.html",
+      "https://gameline.jp/browndust2/characterlist/starfivelist/justia-status/"
+    ]
+  }
+}
