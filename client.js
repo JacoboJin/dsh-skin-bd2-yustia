@@ -13,7 +13,7 @@
  */
 
 const STATIC_CSS = `
-/* 静态深色令牌重映射（frame 内）：消除顶部状态栏/创造模式区域的纯黑表面 */
+/* ===== 全面暖色令牌重映射（frame 内，昼夜双套）===== */
 body [class*='_frame'] {
   --dsw-static-neutral-1000: #2a2118;
   --dsw-static-neutral-900: #33291b;
@@ -28,6 +28,8 @@ body [class*='_frame'] {
   --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #b0871f 16%, transparent);
   --dsw-alias-button-elevated-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
   --dsw-alias-button-floating-fill: color-mix(in srgb, #fdfaf3 90%, transparent);
+  --dsw-alias-toast-bg: #423a2e;
+  --dsw-alias-tooltip-bg: #3a3024;
 }
 body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-static-neutral-1000: #16130f;
@@ -45,6 +47,33 @@ body[data-ds-dark-theme] [class*='_frame'] {
   --dsw-alias-fill-tsp-secondary: color-mix(in srgb, #d8b25c 18%, transparent);
   --dsw-alias-button-elevated-fill: color-mix(in srgb, #33291b 92%, transparent);
   --dsw-alias-button-floating-fill: color-mix(in srgb, #2b2419 90%, transparent);
+  /* 表面层：创造模式卡片 / 弹层 / 多选 */
+  --dsw-alias-bg-layer-3: color-mix(in srgb, #2f261b 88%, transparent);
+  --dsw-alias-bg-overlay: color-mix(in srgb, #2b2419 92%, transparent);
+  --dsw-alias-bg-multi-select: color-mix(in srgb, #2b2419 88%, transparent);
+  /* 侧栏条目：分组/会话项 */
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #d8b25c 22%, transparent);
+  --dsw-specific-sidebar-nav-item-active-accent: #d8b25c;
+  --dsw-specific-sidebar-nav-item-hover: color-mix(in srgb, #d8b25c 12%, transparent);
+  /* 输入区选择器 / 用户气泡 */
+  --dsw-specific-selector: color-mix(in srgb, #33291b 88%, transparent);
+  --dsw-specific-bubble: color-mix(in srgb, #33291b 90%, transparent);
+  --dsw-specific-bubble-highlight: #d8b25c;
+  /* 代码块族：session log / 代码视图暖化 */
+  --dsw-alias-markdown-code-block: #241c12;
+  --dsw-alias-markdown-code-block-banner: #2b2215;
+  --dsw-alias-markdown-code-segment-selected: #34281c;
+  --dsw-alias-markdown-code-segment-unselected: #241c12;
+  --dsw-alias-markdown-inline-code: #34281c;
+  --dsw-alias-markdown-citation: #34281c;
+  --dsw-alias-markdown-tag: #3a2f22;
+  --dsw-alias-markdown-placeholder: #3a2f22;
+  /* 其他深色杂项 */
+  --dsw-alias-toast-bg: #423a2e;
+  --dsw-alias-tooltip-bg: #3a3024;
+  --dsw-alias-button-contrast-fill: #d8b25c;
+  --dsw-alias-brand-primary-invert: #16130f;
+  --dsw-alias-label-primary-inverted: #1a150e;
 }
 ::selection {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent);
